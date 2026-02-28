@@ -72,23 +72,27 @@
   </div>
 
   <script>
-    async function placeOrder() {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        credentials: "include",
-      });
+async function placeOrder() {
+  const response = await fetch("/api/orders", {
+    method: "POST",
+    credentials: "include",
+  });
 
-      const data = await response.json();
+  const data = await response.json();
 
-      if (!response.ok) {
-        alert(data.message || "Login required");
-        if (response.status === 401) window.location.href = "account.html";
-        return;
-      }
+  if (!response.ok) {
+    alert(data.message || "Login required");
 
-      alert("Purchase completed! Invoice sent to your email (if SMTP configured).");
-      window.location.href = "order.html?id=" + data.order.id;
+    if (response.status === 401) {
+      window.location.href = "account.html";
     }
+
+    return;
+  }
+
+  // ✅ FIXED HERE
+  window.location.href = "order.html?id=" + data.orderId;
+}
 
     function formatMoney(n) {
       return "$" + n.toFixed(2);

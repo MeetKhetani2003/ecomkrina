@@ -9,9 +9,43 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+    <style>
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin: 20px 0;
+      }
+      .tabs button {
+        padding: 10px 15px;
+        cursor: pointer;
+        border: none;
+        background: #eee;
+      }
+      .tabs button.active {
+        background: #ff523b;
+        color: white;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .card {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+      }
+    </style>
   </head>
 
   <body>
+    <!-- NAVBAR -->
     <div class="container">
       <div class="navbar">
         <div class="logo">
@@ -26,48 +60,125 @@
             <li><a href="account.html">Account</a></li>
           </ul>
         </nav>
-        <a href="cart.html"><img src="images/cart.png" width="30px" /></a>
+        <div class="nav-icons">
+          <a href="wishlist.html"><i class="fa fa-heart-o"></i></a>
+          <a href="profile.html"><i class="fa fa-user"></i></a>
+          <a href="cart.html"><i class="fa fa-shopping-cart"></i></a>
+        </div>
       </div>
     </div>
 
-    <div class="small-container" style="max-width: 700px; min-height: 50vh">
-      <h2 class="title">My Profile</h2>
-      <div id="profile-card" style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; display:none;">
-        <p><strong>Name:</strong> <span id="profile-name"></span></p>
-        <p><strong>Email:</strong> <span id="profile-email"></span></p>
-        <p><strong>User ID:</strong> <span id="profile-id"></span></p>
+    <!-- PROFILE SECTION -->
+    <div class="small-container" style="max-width: 900px; margin-top: 40px">
+      <h2 class="title">My Account</h2>
+
+      <div class="tabs">
+        <button onclick="showTab('profile')" id="tab-profile" class="active">
+          Profile
+        </button>
+        <button onclick="showTab('orders')" id="tab-orders">Orders</button>
+        <button onclick="showTab('wishlist')" id="tab-wishlist">
+          Wishlist
+        </button>
       </div>
-      <p id="profile-loading" style="text-align:center;">Loading profile...</p>
+
+      <!-- PROFILE TAB -->
+      <div id="profile" class="tab-content active">
+        <div class="card">
+          <p><strong>Name:</strong> <span id="profile-name"></span></p>
+          <p><strong>Email:</strong> <span id="profile-email"></span></p>
+          <p><strong>User ID:</strong> <span id="profile-id"></span></p>
+        </div>
+      </div>
+
+      <!-- ORDERS TAB -->
+      <div id="orders" class="tab-content">
+        <div id="orders-list"></div>
+      </div>
+
+      <!-- WISHLIST TAB -->
+      <div id="wishlist" class="tab-content">
+        <div id="wishlist-list"></div>
+      </div>
     </div>
 
     <script>
-      async function loadProfile() {
-        try {
-          const response = await fetch("/api/users/profile", {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            alert("Please login first");
-            window.location.href = "account.html";
-            return;
-          }
-
-          const profile = await response.json();
-          document.getElementById("profile-name").innerText = profile.name;
-          document.getElementById("profile-email").innerText = profile.email;
-          document.getElementById("profile-id").innerText = profile.id;
-
-          document.getElementById("profile-loading").style.display = "none";
-          document.getElementById("profile-card").style.display = "block";
-        } catch (error) {
-          console.error(error);
-          document.getElementById("profile-loading").innerText =
-            "Unable to load profile";
-        }
+      function showTab(tab) {
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll(".tabs button")
+          .forEach((b) => b.classList.remove("active"));
+        document.getElementById(tab).classList.add("active");
+        document.getElementById("tab-" + tab).classList.add("active");
       }
 
-      document.addEventListener("DOMContentLoaded", loadProfile);
+      async function loadProfile() {
+        const res = await fetch("/api/users/profile", {
+          credentials: "include",
+        });
+        if (!res.ok) return (window.location.href = "account.html");
+        const data = await res.json();
+        document.getElementById("profile-name").innerText = data.name;
+        document.getElementById("profile-email").innerText = data.email;
+        document.getElementById("profile-id").innerText = data.id;
+      }
+
+      async function loadOrders() {
+        const res = await fetch("/api/users/orders", {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const orders = await res.json();
+        const container = document.getElementById("orders-list");
+        container.innerHTML = "";
+
+        if (!orders.length) {
+          container.innerHTML = "<p>No orders yet.</p>";
+          return;
+        }
+
+        orders.forEach((order) => {
+          container.innerHTML += `
+      <div class="card">
+        <p><strong>Order #${order.id}</strong></p>
+        <p>Total: $${order.total}</p>
+        <p>Date: ${new Date(order.created_at).toLocaleDateString()}</p>
+        <a href="order.html?id=${order.id}">View Details</a>
+      </div>
+    `;
+        });
+      }
+
+      async function loadWishlist() {
+        const res = await fetch("/api/wishlist", { credentials: "include" });
+        if (!res.ok) return;
+        const items = await res.json();
+        const container = document.getElementById("wishlist-list");
+        container.innerHTML = "";
+
+        if (!items.length) {
+          container.innerHTML = "<p>Your wishlist is empty.</p>";
+          return;
+        }
+
+        items.forEach((item) => {
+          container.innerHTML += `
+      <div class="card">
+        <img src="${item.image}" width="80"/>
+        <p>${item.title}</p>
+        <p>$${item.price}</p>
+      </div>
+    `;
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        loadProfile();
+        loadOrders();
+        loadWishlist();
+      });
     </script>
   </body>
 </html>
