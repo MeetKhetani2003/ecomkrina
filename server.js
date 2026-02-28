@@ -39,6 +39,22 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 });
 
+const initDatabase = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS wishlist (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      product_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_user_product (user_id, product_id)
+    )
+  `);
+};
+
+initDatabase().catch((error) => {
+  console.error("Failed to initialize database:", error.message);
+});
+
 /* =========================
     IMAGE UPLOAD
 ========================= */
@@ -188,7 +204,27 @@ app.post("/api/users/login", async (req, res) => {
     sameSite: "lax",
   });
 
-  res.json({ message: "Login success" });
+  res.json({
+    message: "Login success",
+    user: {
+      id: rows[0].id,
+      name: rows[0].name,
+      email: rows[0].email,
+    },
+  });
+});
+
+app.get("/api/users/profile", authMiddleware, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT id, name, email FROM users WHERE id = ?",
+    [req.user.id],
+  );
+
+  if (!rows.length) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.json(rows[0]);
 });
 
 /* =========================
@@ -218,6 +254,62 @@ app.post("/api/cart", authMiddleware, async (req, res) => {
   );
 
   res.json({ message: "Added to cart" });
+});
+
+/* =========================
+        WISHLIST
+========================= */
+
+app.get("/api/wishlist", authMiddleware, async (req, res) => {
+  const [rows] = await pool.query(
+    `
+      SELECT products.id, products.title, products.price, products.image, wishlist.created_at
+      FROM wishlist
+      JOIN products ON wishlist.product_id = products.id
+      WHERE wishlist.user_id = ?
+      ORDER BY wishlist.created_at DESC
+    `,
+    [req.user.id],
+  );
+
+  res.json(rows);
+});
+
+app.get("/api/wishlist/:productId", authMiddleware, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?",
+    [req.user.id, req.params.productId],
+  );
+
+  res.json({ inWishlist: rows.length > 0 });
+});
+
+app.post("/api/wishlist", authMiddleware, async (req, res) => {
+  const { product_id } = req.body;
+
+  if (!product_id) {
+    return res.status(400).json({ message: "product_id is required" });
+  }
+
+  await pool.query(
+    `
+      INSERT INTO wishlist (user_id, product_id)
+      VALUES (?, ?)
+      ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
+    `,
+    [req.user.id, product_id],
+  );
+
+  res.json({ message: "Added to wishlist" });
+});
+
+app.delete("/api/wishlist/:productId", authMiddleware, async (req, res) => {
+  await pool.query("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?", [
+    req.user.id,
+    req.params.productId,
+  ]);
+
+  res.json({ message: "Removed from wishlist" });
 });
 
 /* =========================

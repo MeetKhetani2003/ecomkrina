@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wishlist - Redstore</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="navbar">
+        <div class="logo">
+          <a href="index.html"><img src="images/logo.png" width="125px" /></a>
+        </div>
+        <nav>
+          <ul id="MenuItems">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="wishlist.html">Wishlist</a></li>
+            <li><a href="profile.html">Profile</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </nav>
+        <a href="cart.html"><img src="images/cart.png" width="30px" /></a>
+      </div>
+    </div>
+
+    <div class="small-container" style="min-height: 50vh">
+      <h2 class="title">My Wishlist</h2>
+      <div id="wishlist-items" class="row"></div>
+      <p id="empty-message" style="text-align: center; color: #555; display: none">
+        Your wishlist is empty.
+      </p>
+    </div>
+
+    <script>
+      async function loadWishlist() {
+        try {
+          const response = await fetch("/api/wishlist", {
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            alert("Please login first");
+            window.location.href = "account.html";
+            return;
+          }
+
+          const items = await response.json();
+          const container = document.getElementById("wishlist-items");
+          const empty = document.getElementById("empty-message");
+
+          container.innerHTML = "";
+
+          if (!items.length) {
+            empty.style.display = "block";
+            return;
+          }
+
+          empty.style.display = "none";
+
+          items.forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "col-4";
+            card.innerHTML = `
+              <img src="${item.image}" alt="${item.title}" onclick="goToProduct(${item.id})" style="cursor:pointer" />
+              <h4 onclick="goToProduct(${item.id})" style="cursor:pointer">${item.title}</h4>
+              <p>$${item.price}</p>
+              <button class="btn" onclick="removeWishlist(${item.id})">Remove</button>
+            `;
+            container.appendChild(card);
+          });
+        } catch (error) {
+          console.error(error);
+          alert("Error loading wishlist");
+        }
+      }
+
+      function goToProduct(id) {
+        window.location.href = "product-details.html?id=" + id;
+      }
+
+      async function removeWishlist(productId) {
+        await fetch("/api/wishlist/" + productId, {
+          method: "DELETE",
+          credentials: "include",
+        });
+
+        loadWishlist();
+      }
+
+      document.addEventListener("DOMContentLoaded", loadWishlist);
+    </script>
+  </body>
+</html>

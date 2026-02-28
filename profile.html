@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile - Redstore</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="navbar">
+        <div class="logo">
+          <a href="index.html"><img src="images/logo.png" width="125px" /></a>
+        </div>
+        <nav>
+          <ul id="MenuItems">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="wishlist.html">Wishlist</a></li>
+            <li><a href="profile.html">Profile</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </nav>
+        <a href="cart.html"><img src="images/cart.png" width="30px" /></a>
+      </div>
+    </div>
+
+    <div class="small-container" style="max-width: 700px; min-height: 50vh">
+      <h2 class="title">My Profile</h2>
+      <div id="profile-card" style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; display:none;">
+        <p><strong>Name:</strong> <span id="profile-name"></span></p>
+        <p><strong>Email:</strong> <span id="profile-email"></span></p>
+        <p><strong>User ID:</strong> <span id="profile-id"></span></p>
+      </div>
+      <p id="profile-loading" style="text-align:center;">Loading profile...</p>
+    </div>
+
+    <script>
+      async function loadProfile() {
+        try {
+          const response = await fetch("/api/users/profile", {
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            alert("Please login first");
+            window.location.href = "account.html";
+            return;
+          }
+
+          const profile = await response.json();
+          document.getElementById("profile-name").innerText = profile.name;
+          document.getElementById("profile-email").innerText = profile.email;
+          document.getElementById("profile-id").innerText = profile.id;
+
+          document.getElementById("profile-loading").style.display = "none";
+          document.getElementById("profile-card").style.display = "block";
+        } catch (error) {
+          console.error(error);
+          document.getElementById("profile-loading").innerText =
+            "Unable to load profile";
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", loadProfile);
+    </script>
+  </body>
+</html>
