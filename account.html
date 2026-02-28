@@ -29,7 +29,11 @@
             <li><a href="account.html">Account</a></li>
           </ul>
         </nav>
-        <a href="cart.html"><img src="images/cart.png" width="30px" /></a>
+        <div class="nav-icons">
+          <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
+          <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
+          <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+        </div>
       </div>
     </div>
 
@@ -127,6 +131,7 @@
         try {
           const response = await fetch("/api/users/login", {
             method: "POST",
+            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password }),
           });
@@ -158,6 +163,7 @@
         try {
           const response = await fetch("/api/users/register", {
             method: "POST",
+            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, email, password }),
           });

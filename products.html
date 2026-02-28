@@ -3,19 +3,17 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width-device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Products - Redstore</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
         rel="stylesheet">
-    <!--added a cdn link by searching font awesome4 cdn and getting this link from https://www.bootstrapcdn.com/fontawesome/ this url*/-->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
 
 </head>
 
 <body>
-    <!--<div class ="header">-->
     <div class="container">
         <div class="navbar">
             <div class="logo">
@@ -34,21 +32,31 @@
 
                 </ul>
             </nav>
-            <a href="cart.html"><img src="images/cart.png" width="30px" height="30px"></a>
+            <div class="nav-icons">
+                <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
+                <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
+                <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+            </div>
             <img src="images/menu.png" class="menu-icon" onClick="menutoggle()">
         </div>
 
     </div>
-    <!--</div>-->
 
+    <div class="small-container">
+        <h2 class="title">Products</h2>
+        <div class="filters-row">
+            <input id="searchFilter" placeholder="Search product..." />
+            <input id="minPriceFilter" type="number" min="0" placeholder="Min price" />
+            <input id="maxPriceFilter" type="number" min="0" placeholder="Max price" />
+            <select id="stockFilter">
+                <option value="all">All</option>
+                <option value="in">In stock</option>
+                <option value="out">Out of stock</option>
+            </select>
+        </div>
+        <div class="row" id="productList"></div>
+    </div>
 
-   <div class="small-container">
-  <div class="row" id="productList"></div>
-</div>
-
-
-
-    <!----------------------------------footer------------------------------------->
     <div class="footer">
         <div class="container" style="text-align:center;">
             <div class="footer-col-2">
@@ -56,51 +64,59 @@
                 <p>Our Purpose Is To Sustainably Make the Pleasure and Benefits of Sports Accessible to the Many.</p>
             </div>
 
-
-
-
-            <!-----------------------------------js for toggle menu-------------------------------------->
             <script>
                 var menuItems = document.getElementById("MenuItems");
 
                 MenuItems.style.maxHeight = "0px";
                 function menutoggle() {
                     if (MenuItems.style.maxHeight == "0px") {
-                        MenuItems.style.maxHeight = "200px";
+                        MenuItems.style.maxHeight = "260px";
                     }
                     else {
                         MenuItems.style.maxHeight = "0px";
                     }
                 }
             </script>
-<script>
-function generateStars(rating) {
-    let starsHTML = "";
-    rating = parseInt(rating) || 0;
+            <script>
+                function generateStars(rating) {
+                    let starsHTML = "";
+                    rating = parseInt(rating) || 0;
 
-    for (let i = 1; i <= 5; i++) {
-        if (i <= rating) {
-            starsHTML += '<i class="fa fa-star"></i>';
-        } else {
-            starsHTML += '<i class="fa fa-star-o"></i>';
-        }
-    }
+                    for (let i = 1; i <= 5; i++) {
+                        if (i <= rating) {
+                            starsHTML += '<i class="fa fa-star"></i>';
+                        } else {
+                            starsHTML += '<i class="fa fa-star-o"></i>';
+                        }
+                    }
 
-    return starsHTML;
-}
+                    return starsHTML;
+                }
 
-document.addEventListener("DOMContentLoaded", async () => {
+                let allProducts = [];
 
-    const container = document.getElementById("productList");
+                function renderProducts() {
+                    const container = document.getElementById("productList");
+                    const query = document.getElementById("searchFilter").value.toLowerCase().trim();
+                    const minPrice = Number(document.getElementById("minPriceFilter").value || 0);
+                    const maxPrice = Number(document.getElementById("maxPriceFilter").value || 0);
+                    const stockFilter = document.getElementById("stockFilter").value;
 
-    try {
-        const res = await fetch("/api/products");
-        const products = await res.json();
+                    const products = allProducts.filter((product) => {
+                        const titleOk = product.title.toLowerCase().includes(query);
+                        const minOk = Number(product.price) >= minPrice;
+                        const maxOk = maxPrice ? Number(product.price) <= maxPrice : true;
+                        const stockOk = stockFilter === "all"
+                            || (stockFilter === "in" && product.stock > 0)
+                            || (stockFilter === "out" && product.stock <= 0);
 
-        let html = "";
+                        return titleOk && minOk && maxOk && stockOk;
+                    });
 
-        products.forEach(product => {
-            html += `
+                    let html = "";
+
+                    products.forEach(product => {
+                        html += `
                 <div class="col-4 product-card">
                     <div onclick="goToProduct(${product.id})" style="cursor:pointer">
                         <img src="${product.image}" alt="${product.title}">
@@ -109,56 +125,73 @@ document.addEventListener("DOMContentLoaded", async () => {
                             ${generateStars(product.Rating)}
                         </div>
                         <p>$${product.price}</p>
+                        <p class="stock-label ${product.stock > 0 ? "stock-in" : "stock-out"}">
+                          ${product.stock > 0 ? `In stock (${product.stock})` : "Out of stock"}
+                        </p>
                     </div>
 
                     <button class="btn add-btn"
-                        onclick="addToCart(event, ${product.id})">
-                        Add to Cart
+                        onclick="addToCart(event, ${product.id})"
+                        ${product.stock <= 0 ? "disabled" : ""}>
+                        ${product.stock <= 0 ? "Out of stock" : "Add to Cart"}
                     </button>
                 </div>
             `;
-        });
+                    });
 
-        container.innerHTML = html;
+                    container.innerHTML = html || "<p>No products found for selected filters.</p>";
+                }
 
-    } catch (error) {
-        console.error("Error loading products:", error);
-    }
-});
+                document.addEventListener("DOMContentLoaded", async () => {
+                    try {
+                        const res = await fetch("/api/products");
+                        allProducts = await res.json();
+                        renderProducts();
 
-function goToProduct(id) {
-    window.location.href = "product-details.html?id=" + id;
-}
+                        ["searchFilter", "minPriceFilter", "maxPriceFilter", "stockFilter"].forEach((id) => {
+                            document.getElementById(id).addEventListener("input", renderProducts);
+                            document.getElementById(id).addEventListener("change", renderProducts);
+                        });
+                    } catch (error) {
+                        console.error("Error loading products:", error);
+                    }
+                });
 
-async function addToCart(event, productId) {
+                function goToProduct(id) {
+                    window.location.href = "product-details.html?id=" + id;
+                }
 
-    event.stopPropagation();
+                async function addToCart(event, productId) {
 
-    try {
-        const response = await fetch("/api/cart", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                product_id: productId,
-                quantity: 1
-            })
-        });
+                    event.stopPropagation();
 
-        if (!response.ok) {
-            alert("Please login first");
-            window.location.href = "account.html";
-            return;
-        }
+                    try {
+                        const response = await fetch("/api/cart", {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                product_id: productId,
+                                quantity: 1
+                            })
+                        });
 
-        alert("Added to cart successfully!");
+                        const data = await response.json();
 
-    } catch (err) {
-        console.error(err);
-        alert("Error adding to cart");
-    }
-}
-</script>
+                        if (!response.ok) {
+                            alert(data.message || "Please login first");
+                            if (response.status === 401) window.location.href = "account.html";
+                            return;
+                        }
+
+                        alert("Added to cart successfully!");
+
+                    } catch (err) {
+                        console.error(err);
+                        alert("Error adding to cart");
+                    }
+                }
+            </script>
 
 </body>
 

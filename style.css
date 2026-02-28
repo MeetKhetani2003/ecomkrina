@@ -774,3 +774,100 @@ form a {
   padding: 6px 12px;
   font-size: 13px;
 }
+
+.nav-icons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: 16px;
+}
+
+.nav-icons a {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+}
+
+.nav-icons a:hover {
+  background: #ff523b;
+  color: #fff;
+  border-color: #ff523b;
+}
+
+.filters-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filters-row input,
+.filters-row select,
+.inquiry-form input,
+.inquiry-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.stock-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 5px;
+}
+
+.stock-in {
+  color: #2f9d58;
+}
+
+.stock-out {
+  color: #db2f2f;
+}
+
+.profile-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.profile-tabs button {
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.profile-tabs button.active {
+  background: #ff523b;
+  color: #fff;
+  border-color: #ff523b;
+}
+
+.profile-tab-content {
+  display: none;
+}
+
+.profile-tab-content.active {
+  display: block;
+}
+
+.order-card {
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+@media only screen and (max-width: 800px) {
+  .filters-row {
+    grid-template-columns: 1fr;
+  }
+}

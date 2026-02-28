@@ -7,8 +7,7 @@
     <title>Contact - Redstore</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 
@@ -30,7 +29,11 @@
             <li><a href="account.html">Account</a></li>
                 </ul>
             </nav>
-            <a href="cart.html"><img src="images/cart.png" width="30px" height="30px" alt="Cart"></a>
+            <div class="nav-icons">
+                <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
+                <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
+                <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+            </div>
             <img src="images/menu.png" class="menu-icon" onClick="menutoggle()">
         </div>
     </div>
@@ -38,9 +41,13 @@
     <div class="small-container contact">
         <div class="contact-box">
             <h2>Contact</h2>
-            <p>Developer: <strong>HARSH</strong></p>
-            <p>Email: <a href="mailto:harsh@gmail.com">harsh@gmail.com</a></p>
-            <p>If you have questions, send a message to the email above.</p>
+            <p>For help, submit your inquiry and our team will contact you.</p>
+            <form id="inquiryForm" class="inquiry-form">
+                <input type="text" id="inqName" placeholder="Your name" required />
+                <input type="email" id="inqEmail" placeholder="Your email" required />
+                <textarea id="inqMessage" placeholder="Write your message" required></textarea>
+                <button class="btn" type="submit">Send Inquiry</button>
+            </form>
         </div>
     </div>
 
@@ -58,11 +65,35 @@
         MenuItems.style.maxHeight = "0px";
         function menutoggle() {
             if (MenuItems.style.maxHeight == "0px") {
-                MenuItems.style.maxHeight = "200px";
+                MenuItems.style.maxHeight = "260px";
             } else {
                 MenuItems.style.maxHeight = "0px";
             }
         }
+
+        document.getElementById("inquiryForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const response = await fetch("/api/inquiries", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: document.getElementById("inqName").value,
+                    email: document.getElementById("inqEmail").value,
+                    message: document.getElementById("inqMessage").value,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(data.message || "Failed to submit inquiry");
+                return;
+            }
+
+            alert("Inquiry sent successfully!");
+            this.reset();
+        });
     </script>
 </body>
 

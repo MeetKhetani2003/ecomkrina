@@ -32,7 +32,11 @@
             <li><a href="account.html">Account</a></li>
           </ul>
         </nav>
-        <a href="cart.html"><img src="images/cart.png" width="30" /></a>
+        <div class="nav-icons">
+          <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
+          <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
+          <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+        </div>
       </div>
     </div>
 
@@ -94,6 +98,7 @@
 
         <div style="margin-top: 24px">
           <a class="btn" href="products.html">Continue Shopping</a>
+          <a class="btn" id="downloadInvoiceBtn" target="_blank" style="margin-left: 8px">Download Invoice</a>
         </div>
       </div>
     </main>
@@ -120,6 +125,7 @@
       document.addEventListener("DOMContentLoaded", async () => {
         const params = new URLSearchParams(window.location.search);
         const orderId = params.get("id");
+        const invoiceBtn = document.getElementById("downloadInvoiceBtn");
 
         if (!orderId) {
           alert("Invalid order.");
@@ -128,6 +134,7 @@
         }
 
         try {
+          invoiceBtn.href = "/api/orders/" + orderId + "/invoice";
           const response = await fetch("/api/orders/" + orderId, {
             credentials: "include",
           });

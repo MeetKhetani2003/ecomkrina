@@ -39,21 +39,28 @@
         /></a>
         <img src="images/menu.png" class="menu-icon" onclick="menutoggle()" />
       </div>
+      <nav>
+        <ul id="MenuItems">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="About.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="nav-icons">
+        <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
+        <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
+        <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+      </div>
+      <img src="images/menu.png" class="menu-icon" onclick="menutoggle()" />
     </div>
+  </div>
 
-    <!-- PRODUCT SECTION -->
-    <div class="small-container single-product">
-      <div class="row">
-        <div class="col-2">
-          <img id="productImage" width="100%" />
-        </div>
-
-        <div class="col-2">
-          <h1 id="productTitle"></h1>
-
-          <!-- ⭐ RATING HERE -->
-          <div class="rating" id="productRating" style="cursor: pointer"></div>
-          <p style="font-size: 13px; color: #777">Click stars to rate</p>
+  <div class="small-container single-product">
+    <div class="row">
+      <div class="col-2">
+        <img id="productImage" width="100%" />
+      </div>
 
           <h4 id="productPrice"></h4>
           <p id="productDescription"></p>
@@ -63,67 +70,59 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- FOOTER -->
-    <div class="footer">
-      <div class="container">
-        <div class="row">
-          <div class="footer-col-2">
-            <img src="images/logo-white.png" />
-            <p>
-              Our Purpose Is To Sustainably Make the Pleasure and Benefits of
-              Sports Accessible to the Many.
-            </p>
-          </div>
+  <div class="small-container">
+    <h2 class="title">Recommended Products</h2>
+    <div class="row" id="recommendedProducts"></div>
+  </div>
+
+  <div class="footer">
+    <div class="container">
+      <div class="row">
+        <div class="footer-col-2">
+          <img src="images/logo-white.png" />
+          <p>
+            Our Purpose Is To Sustainably Make the Pleasure and Benefits of
+            Sports Accessible to the Many.
+          </p>
         </div>
-        <hr />
-        <p class="copyright">Copyright 2026 - Redstore</p>
       </div>
+      <hr />
+      <p class="copyright">Copyright 2026 - Redstore</p>
     </div>
+  </div>
 
-    <!-- MENU TOGGLE -->
-    <script>
-      var menuItems = document.getElementById("MenuItems");
-      MenuItems.style.maxHeight = "0px";
+  <script>
+    var menuItems = document.getElementById("MenuItems");
+    MenuItems.style.maxHeight = "0px";
 
-      function menutoggle() {
-        if (MenuItems.style.maxHeight == "0px") {
-          MenuItems.style.maxHeight = "200px";
-        } else {
-          MenuItems.style.maxHeight = "0px";
-        }
+    function menutoggle() {
+      if (MenuItems.style.maxHeight == "0px") {
+        MenuItems.style.maxHeight = "260px";
+      } else {
+        MenuItems.style.maxHeight = "0px";
       }
-    </script>
+    }
 
-    <!-- ⭐ STAR GENERATOR FUNCTION -->
-    <script>
-      function generateStars(rating) {
-        let starsHTML = "";
-        rating = parseInt(rating) || 0;
+    function generateStars(rating) {
+      let html = "";
+      rating = parseInt(rating) || 0;
 
-        for (let i = 1; i <= 5; i++) {
-          if (i <= rating) {
-            starsHTML += '<i class="fa fa-star"></i>';
-          } else {
-            starsHTML += '<i class="fa fa-star-o"></i>';
-          }
-        }
-
-        return starsHTML;
+      for (let i = 1; i <= 5; i++) {
+        html += `<i class="fa ${i <= rating ? "fa-star" : "fa-star-o"}" onclick="rateProduct(${i})"></i>`;
       }
-    </script>
 
-    <script>
-      function generateStars(rating) {
-        let html = "";
-        rating = parseInt(rating) || 0;
+      return html;
+    }
 
-        for (let i = 1; i <= 5; i++) {
-          html += `<i class="fa ${i <= rating ? "fa-star" : "fa-star-o"}"
-               onclick="rateProduct(${i})"></i>`;
-        }
+    function renderRecommendedProducts(products) {
+      const container = document.getElementById("recommendedProducts");
+      container.innerHTML = "";
 
-        return html;
+      if (!products.length) {
+        container.innerHTML = "<p>No recommendations available.</p>";
+        return;
       }
 
       document.addEventListener("DOMContentLoaded", async () => {
@@ -143,6 +142,40 @@
         window.currentProduct = product;
         syncWishlistButton(product.id);
       });
+    }
+
+    function goToProduct(id) {
+      window.location.href = "product-details.html?id=" + id;
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const id = new URLSearchParams(window.location.search).get("id");
+      const res = await fetch("/api/products/" + id);
+      const product = await res.json();
+
+      document.getElementById("productImage").src = product.image;
+      document.getElementById("productTitle").innerText = product.title;
+      document.getElementById("productPrice").innerText = "$" + product.price;
+      document.getElementById("productDescription").innerText = product.description;
+      document.getElementById("productRating").innerHTML = generateStars(product.Rating);
+
+      const stockStatus = document.getElementById("stockStatus");
+      const cartBtn = document.getElementById("cartBtn");
+
+      if (product.stock > 0) {
+        stockStatus.className = "stock-label stock-in";
+        stockStatus.innerText = `In stock (${product.stock})`;
+      } else {
+        stockStatus.className = "stock-label stock-out";
+        stockStatus.innerText = "Out of stock";
+        cartBtn.disabled = true;
+        cartBtn.innerText = "Out of stock";
+      }
+
+      window.currentProduct = product;
+      renderRecommendedProducts(product.recommended || []);
+      syncWishlistButton(product.id);
+    });
 
 
       async function syncWishlistButton(productId) {
@@ -209,56 +242,99 @@
       async function rateProduct(value) {
         const product = window.currentProduct;
 
-        const res = await fetch("/api/products/" + product.id + "/rating", {
-          method: "PUT",
+      try {
+        const res = await fetch("/api/wishlist/" + productId, {
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ Rating: value }),
         });
 
         if (!res.ok) {
-          alert("Login required to rate");
-          window.location.href = "account.html";
+          wishlistBtn.innerText = "Add to Wishlist";
+          wishlistBtn.dataset.inWishlist = "false";
           return;
         }
 
-        document.getElementById("productRating").innerHTML =
-          generateStars(value);
-
-        alert("Thanks for rating!");
+        const data = await res.json();
+        wishlistBtn.dataset.inWishlist = data.inWishlist ? "true" : "false";
+        wishlistBtn.innerText = data.inWishlist
+          ? "Remove from Wishlist"
+          : "Add to Wishlist";
+      } catch (error) {
+        console.error("Failed to check wishlist:", error);
       }
-    </script>
+    }
 
-    <!-- ADD TO CART -->
-    <script>
-      async function addToCart() {
-        const product = window.currentProduct;
+    async function toggleWishlist() {
+      const product = window.currentProduct;
+      if (!product) return;
 
-        if (!product) return;
+      const wishlistBtn = document.getElementById("wishlistBtn");
+      const inWishlist = wishlistBtn.dataset.inWishlist === "true";
 
-        try {
-          const response = await fetch("/api/cart", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              product_id: product.id,
-              quantity: 1,
-            }),
-          });
+      const response = await fetch(
+        "/api/wishlist" + (inWishlist ? "/" + product.id : ""),
+        {
+          method: inWishlist ? "DELETE" : "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: inWishlist ? null : JSON.stringify({ product_id: product.id }),
+        },
+      );
 
-          if (!response.ok) {
-            alert("Please login first");
-            window.location.href = "account.html";
-            return;
-          }
-
-          alert("Added to cart successfully!");
-        } catch (err) {
-          console.error(err);
-          alert("Error adding to cart");
-        }
+      if (!response.ok) {
+        alert("Please login first");
+        window.location.href = "account.html";
+        return;
       }
-    </script>
-  </body>
+
+      await syncWishlistButton(product.id);
+      alert(inWishlist ? "Removed from wishlist" : "Added to wishlist");
+    }
+
+    async function rateProduct(value) {
+      const product = window.currentProduct;
+
+      const res = await fetch("/api/products/" + product.id + "/rating", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Rating: value }),
+      });
+
+      if (!res.ok) {
+        alert("Login required to rate");
+        window.location.href = "account.html";
+        return;
+      }
+
+      document.getElementById("productRating").innerHTML = generateStars(value);
+      alert("Thanks for rating!");
+    }
+
+    async function addToCart() {
+      const product = window.currentProduct;
+      if (!product) return;
+
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity: 1,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Please login first");
+        if (response.status === 401) window.location.href = "account.html";
+        return;
+      }
+
+      alert("Added to cart successfully!");
+    }
+  </script>
+</body>
+
 </html>

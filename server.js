@@ -6,14 +6,11 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import mysql from "mysql2/promise";
+import nodemailer from "nodemailer";
 
 dotenv.config();
 
 const app = express();
-
-/* =========================
-    MIDDLEWARE
-========================= */
 
 app.use(
   cors({
@@ -25,10 +22,6 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static("./"));
-
-/* =========================
-    DATABASE
-========================= */
 
 const pool = mysql.createPool({
   host: "localhost",
@@ -57,8 +50,7 @@ initDatabase().catch((error) => {
 
 /* =========================
     IMAGE UPLOAD
-========================= */
-
+*/
 const uploadDir = "./images";
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
@@ -68,10 +60,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-
-/* =========================
-    AUTH MIDDLEWARE
-========================= */
 
 const authMiddleware = (req, res, next) => {
   const token = req.cookies.token;
@@ -86,60 +74,88 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-/* =========================
-        PRODUCTS
-========================= */
+const adminMiddleware = (req, res, next) => {
+  const token = req.cookies.admin_token;
+  if (!token) return res.status(401).json({ message: "Admin login required" });
 
-// Get All
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.admin) throw new Error("Not admin");
+    next();
+  } catch {
+    return res.status(401).json({ message: "Invalid admin token" });
+  }
+};
+
 app.get("/api/products", async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM products ORDER BY id DESC");
   res.json(rows);
 });
 
-// Get Single
 app.get("/api/products/:id", async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM products WHERE id=?", [
     req.params.id,
   ]);
-  res.json(rows[0]);
+
+  if (!rows.length) return res.status(404).json({ message: "Product not found" });
+
+  const product = rows[0];
+
+  const [recommended] = await pool.query(
+    "SELECT id, title, price, image, stock FROM products WHERE id != ? ORDER BY id DESC LIMIT 4",
+    [req.params.id],
+  );
+
+  res.json({ ...product, recommended });
 });
 
-// Add Product
-app.post("/api/products", upload.single("image"), async (req, res) => {
-  const { title, price, description, Rating } = req.body;
+app.post("/api/products", adminMiddleware, upload.single("image"), async (req, res) => {
+  const { title, price, description, Rating, stock } = req.body;
   const imagePath = req.file ? `images/${req.file.filename}` : null;
 
   const ratingValue = parseInt(Rating) || 0;
+  const stockValue = Math.max(0, parseInt(stock) || 0);
 
   if (ratingValue < 0 || ratingValue > 5)
     return res.status(400).json({ message: "Rating 0-5 only" });
 
   await pool.query(
-    "INSERT INTO products (title, price, image, description, Rating) VALUES (?,?,?,?,?)",
-    [title, price, imagePath, description, ratingValue],
+    "INSERT INTO products (title, price, image, description, Rating, stock) VALUES (?,?,?,?,?,?)",
+    [title, price, imagePath, description, ratingValue, stockValue],
   );
 
   res.json({ message: "Product added" });
 });
 
-// Update Product
-app.put("/api/products/:id", async (req, res) => {
-  const { title, price, description, Rating } = req.body;
+app.put("/api/products/:id", adminMiddleware, async (req, res) => {
+  const { title, price, description, Rating, stock } = req.body;
 
   const ratingValue = parseInt(Rating);
+  const stockValue = Math.max(0, parseInt(stock) || 0);
 
   if (ratingValue < 0 || ratingValue > 5)
     return res.status(400).json({ message: "Rating 0-5 only" });
 
+  const [beforeRows] = await pool.query("SELECT stock FROM products WHERE id = ?", [
+    req.params.id,
+  ]);
+
+  if (!beforeRows.length) {
+    return res.status(404).json({ message: "Product not found" });
+  }
+
   await pool.query(
-    "UPDATE products SET title=?, price=?, description=?, Rating=? WHERE id=?",
-    [title, price, description, ratingValue, req.params.id],
+    "UPDATE products SET title=?, price=?, description=?, Rating=?, stock=? WHERE id=?",
+    [title, price, description, ratingValue, stockValue, req.params.id],
   );
+
+  if (beforeRows[0].stock <= 0 && stockValue > 0) {
+    await sendBackInStockAlerts([req.params.id]);
+  }
 
   res.json({ message: "Updated successfully" });
 });
 
-// ⭐ RATE PRODUCT (LOGIN REQUIRED)
 app.put("/api/products/:id/rating", authMiddleware, async (req, res) => {
   const ratingValue = parseInt(req.body.Rating);
 
@@ -154,8 +170,7 @@ app.put("/api/products/:id/rating", authMiddleware, async (req, res) => {
   res.json({ message: "Rated successfully" });
 });
 
-// Delete
-app.delete("/api/products/:id", async (req, res) => {
+app.delete("/api/products/:id", adminMiddleware, async (req, res) => {
   const [rows] = await pool.query("SELECT image FROM products WHERE id=?", [
     req.params.id,
   ]);
@@ -167,10 +182,6 @@ app.delete("/api/products/:id", async (req, res) => {
 
   res.json({ message: "Deleted" });
 });
-
-/* =========================
-        USERS
-========================= */
 
 app.post("/api/users/register", async (req, res) => {
   const { name, email, password } = req.body;
@@ -227,14 +238,37 @@ app.get("/api/users/profile", authMiddleware, async (req, res) => {
   res.json(rows[0]);
 });
 
-/* =========================
-        CART
-========================= */
+app.get("/api/users/profile", authMiddleware, async (req, res) => {
+  const [rows] = await pool.query(
+    "SELECT id, name, email FROM users WHERE id = ?",
+    [req.user.id],
+  );
+
+  if (!rows.length) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.json(rows[0]);
+});
+
+app.get("/api/users/orders", authMiddleware, async (req, res) => {
+  const [orders] = await pool.query(
+    "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC",
+    [req.user.id],
+  );
+
+  res.json(orders);
+});
+
+app.get("/api/users", adminMiddleware, async (req, res) => {
+  const [users] = await pool.query("SELECT id, name, email FROM users ORDER BY id DESC");
+  res.json(users);
+});
 
 app.get("/api/cart", authMiddleware, async (req, res) => {
   const [rows] = await pool.query(
     `
-    SELECT cart.id, products.title, products.price, products.image, cart.quantity
+    SELECT cart.id, products.id AS product_id, products.title, products.price, products.image, products.stock, cart.quantity
     FROM cart
     JOIN products ON cart.product_id = products.id
     WHERE cart.user_id=?
@@ -247,10 +281,27 @@ app.get("/api/cart", authMiddleware, async (req, res) => {
 
 app.post("/api/cart", authMiddleware, async (req, res) => {
   const { product_id, quantity } = req.body;
+  const qty = Math.max(1, parseInt(quantity) || 1);
+
+  const [products] = await pool.query("SELECT stock FROM products WHERE id = ?", [
+    product_id,
+  ]);
+
+  if (!products.length) {
+    return res.status(404).json({ message: "Product not found" });
+  }
+
+  if (products[0].stock <= 0) {
+    return res.status(400).json({ message: "Product is out of stock" });
+  }
 
   await pool.query(
-    "INSERT INTO cart (user_id,product_id,quantity) VALUES (?,?,?)",
-    [req.user.id, product_id, quantity],
+    `
+      INSERT INTO cart (user_id,product_id,quantity)
+      VALUES (?,?,?)
+      ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+    `,
+    [req.user.id, product_id, qty],
   );
 
   res.json({ message: "Added to cart" });
@@ -258,8 +309,7 @@ app.post("/api/cart", authMiddleware, async (req, res) => {
 
 /* =========================
         WISHLIST
-========================= */
-
+*/
 app.get("/api/wishlist", authMiddleware, async (req, res) => {
   const [rows] = await pool.query(
     `
@@ -314,8 +364,7 @@ app.delete("/api/wishlist/:productId", authMiddleware, async (req, res) => {
 
 /* =========================
         START
-========================= */
-
+*/
 app.listen(5000, () =>
   console.log("🚀 Server running on http://localhost:5000"),
 );

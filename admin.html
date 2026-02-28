@@ -1,246 +1,277 @@
 <!doctype html>
 <html>
-  <head>
-    <title>Admin Dashboard</title>
-    <meta charset="UTF-8" />
-    <style>
-      body {
-        margin: 0;
-        font-family: Arial;
-        display: flex;
-      }
-      .sidebar {
-        width: 220px;
-        background: #111;
-        color: white;
-        height: 100vh;
-        padding: 20px;
-      }
-      .sidebar h2 {
-        margin-bottom: 30px;
-      }
-      .sidebar button {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 10px;
-        background: #333;
-        color: white;
-        border: none;
-        cursor: pointer;
-      }
-      .sidebar button:hover {
-        background: #555;
-      }
 
-      .content {
-        flex: 1;
-        padding: 30px;
-        background: #f4f4f4;
-        overflow: auto;
-      }
+<head>
+  <title>Admin Dashboard</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <style>
+    body { margin: 0; font-family: Arial; display: flex; }
+    .sidebar { width: 230px; background: #111; color: white; min-height: 100vh; padding: 20px; }
+    .sidebar button { width: 100%; padding: 10px; margin-bottom: 10px; background: #333; color: white; border: none; cursor: pointer; }
+    .content { flex: 1; padding: 25px; background: #f4f4f4; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    table th, table td { padding: 10px; border: 1px solid #ddd; }
+    input, textarea, select { width: 100%; padding: 8px; margin-bottom: 10px; }
+    .btn { padding: 6px 10px; border: none; cursor: pointer; color: white; }
+    .edit { background: orange; } .delete { background: red; } .save { background: green; }
+    .card-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+    .card { background:white; padding:14px; border-radius:8px; }
+  </style>
+</head>
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-      }
+<body>
+  <div class="sidebar">
+    <h2>Admin</h2>
+    <button onclick="showDashboard()">Dashboard</button>
+    <button onclick="showProducts()">Products + Stock</button>
+    <button onclick="showUsers()">Users</button>
+    <button onclick="showInquiries()">Inquiries</button>
+    <button onclick="logoutAdmin()">Logout</button>
+  </div>
 
-      table th,
-      table td {
-        padding: 10px;
-        border: 1px solid #ddd;
-      }
+  <div class="content" id="content"></div>
 
-      table th {
-        background: #eee;
-      }
+  <script>
+    const API = "/api";
 
-      input,
-      textarea {
-        width: 100%;
-        padding: 8px;
-        margin-bottom: 10px;
+    function showLogin() {
+      document.getElementById("content").innerHTML = `
+        <h2>Admin Login</h2>
+        <input type="password" id="adminPassword" placeholder="Admin password" />
+        <button class="btn save" onclick="loginAdmin()">Login</button>
+      `;
+    }
+
+    async function loginAdmin() {
+      const response = await fetch(API + "/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: document.getElementById("adminPassword").value }),
+      });
+
+      if (!response.ok) {
+        alert("Invalid password");
+        return;
       }
 
-      .btn {
-        padding: 6px 10px;
-        border: none;
-        cursor: pointer;
-        color: white;
+      showDashboard();
+    }
+
+    async function authGuard(fn) {
+      try {
+        await fn();
+      } catch (e) {
+        showLogin();
+      }
+    }
+
+    async function showDashboard() {
+      const res = await fetch(API + "/admin/summary", { credentials: "include" });
+      if (!res.ok) { showLogin(); return; }
+
+      const stats = await res.json();
+      document.getElementById("content").innerHTML = `
+        <h2>Dashboard</h2>
+        <div class="card-grid">
+          <div class="card"><h3>${stats.totalProducts}</h3><p>Total Products</p></div>
+          <div class="card"><h3>${stats.lowStock}</h3><p>Low/Out of Stock</p></div>
+          <div class="card"><h3>${stats.totalOrders}</h3><p>Total Orders</p></div>
+          <div class="card"><h3>${stats.newInquiries}</h3><p>New Inquiries</p></div>
+        </div>
+      `;
+    }
+
+    function showProducts() {
+      document.getElementById("content").innerHTML = `
+        <h2>Products</h2>
+        <button onclick="showAddForm()">+ Add Product</button>
+        <div id="productTable"></div>
+      `;
+      loadProducts();
+    }
+
+    async function loadProducts() {
+      const res = await fetch(API + "/products");
+      const products = await res.json();
+
+      let html = `<table><tr><th>ID</th><th>Image</th><th>Title</th><th>Price</th><th>Stock</th><th>Actions</th></tr>`;
+
+      products.forEach((p) => {
+        html += `
+          <tr>
+            <td>${p.id}</td>
+            <td><img src="${p.image}" width="50"></td>
+            <td>${p.title}</td>
+            <td>$${p.price}</td>
+            <td>${p.stock}</td>
+            <td>
+              <button class="btn edit" onclick="editProduct(${p.id}, '${p.title.replace(/'/g, "\\'")}', '${p.price}', '${(p.description || "").replace(/'/g, "\\'")}', '${p.Rating}', '${p.stock}')">Edit</button>
+              <button class="btn delete" onclick="deleteProduct(${p.id})">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+      document.getElementById("productTable").innerHTML = html;
+    }
+
+    function showAddForm() {
+      document.getElementById("content").innerHTML = `
+        <h2>Add Product</h2>
+        <input type="text" id="title" placeholder="Title">
+        <input type="number" id="price" placeholder="Price">
+        <input type="number" id="stock" placeholder="Stock" min="0" value="20">
+        <input type="number" id="rating" placeholder="Rating" min="0" max="5" value="4">
+        <textarea id="description" placeholder="Description"></textarea>
+        <input type="file" id="image">
+        <button class="btn save" onclick="addProduct()">Save</button>
+      `;
+    }
+
+    async function addProduct() {
+      const formData = new FormData();
+      formData.append("title", document.getElementById("title").value);
+      formData.append("price", document.getElementById("price").value);
+      formData.append("stock", document.getElementById("stock").value);
+      formData.append("Rating", document.getElementById("rating").value);
+      formData.append("description", document.getElementById("description").value);
+      const imageFile = document.getElementById("image").files[0];
+      if (imageFile) formData.append("image", imageFile);
+
+      const response = await fetch("/api/products", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        alert("Admin login required");
+        showLogin();
+        return;
       }
 
-      .edit {
-        background: orange;
-      }
-      .delete {
-        background: red;
-      }
-      .save {
-        background: green;
-      }
-    </style>
-  </head>
+      showProducts();
+    }
 
-  <body>
-    <div class="sidebar">
-      <h2>Admin</h2>
-      <button onclick="showProducts()">Products</button>
-      <button onclick="showUsers()">Users</button>
-    </div>
+    function editProduct(id, title, price, description, rating, stock) {
+      document.getElementById("content").innerHTML = `
+        <h2>Edit Product</h2>
+        <input type="text" id="title" value="${title}">
+        <input type="number" id="price" value="${price}">
+        <input type="number" id="stock" value="${stock}">
+        <input type="number" id="rating" value="${rating}">
+        <textarea id="description">${description}</textarea>
+        <button class="btn save" onclick="updateProduct(${id})">Update</button>
+      `;
+    }
 
-    <div class="content" id="content">
-      <h2>Welcome Admin</h2>
-    </div>
+    async function updateProduct(id) {
+      const data = {
+        title: document.getElementById("title").value,
+        price: document.getElementById("price").value,
+        stock: document.getElementById("stock").value,
+        Rating: document.getElementById("rating").value,
+        description: document.getElementById("description").value,
+      };
 
-    <script>
-      const API = "/api";
+      const response = await fetch(API + "/products/" + id, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-      function showProducts() {
-        document.getElementById("content").innerHTML = `
-    <h2>Products</h2>
-    <button onclick="showAddForm()">+ Add Product</button>
-    <div id="productTable"></div>
-  `;
-        loadProducts();
-      }
-
-      async function loadProducts() {
-        const res = await fetch(API + "/products");
-        const products = await res.json();
-
-        let html = `
-    <table>
-      <tr>
-        <th>ID</th>
-        <th>Image</th>
-        <th>Title</th>
-        <th>Price</th>
-        <th>Actions</th>
-      </tr>
-  `;
-
-        products.forEach((p) => {
-          html += `
-      <tr>
-        <td>${p.id}</td>
-        <td><img src="${p.image}" width="50"></td>
-        <td>${p.title}</td>
-        <td>$${p.price}</td>
-        <td>
-          <button class="btn edit" onclick="editProduct(${p.id}, '${p.title}', '${p.price}', '${p.description}')">Edit</button>
-          <button class="btn delete" onclick="deleteProduct(${p.id})">Delete</button>
-        </td>
-      </tr>
-    `;
-        });
-
-        html += "</table>";
-        document.getElementById("productTable").innerHTML = html;
+      if (!response.ok) {
+        alert("Admin login required");
+        showLogin();
+        return;
       }
 
-      function showAddForm() {
-        document.getElementById("content").innerHTML = `
-    <h2>Add Product</h2>
-    <input type="text" id="title" placeholder="Title">
-    <input type="number" id="price" placeholder="Price">
-    <textarea id="description" placeholder="Description"></textarea>
-    <input type="file" id="image">
-    <button class="btn save" onclick="addProduct()">Save</button>
-  `;
+      showProducts();
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm("Delete this product?")) return;
+
+      const response = await fetch(API + "/products/" + id, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        alert("Admin login required");
+        showLogin();
+        return;
       }
 
-      async function addProduct() {
-        const formData = new FormData();
-        formData.append("title", document.getElementById("title").value);
-        formData.append("price", document.getElementById("price").value);
-        formData.append(
-          "description",
-          document.getElementById("description").value,
-        );
+      loadProducts();
+    }
 
-        const imageFile = document.getElementById("image").files[0];
-        if (imageFile) {
-          formData.append("image", imageFile);
-        }
+    function showUsers() {
+      document.getElementById("content").innerHTML = `<h2>Users</h2><div id="userTable"></div>`;
+      loadUsers();
+    }
 
-        await fetch("/api/products", {
-          method: "POST",
-          body: formData,
-        });
+    async function loadUsers() {
+      const res = await fetch(API + "/users", { credentials: "include" });
+      if (!res.ok) { showLogin(); return; }
+      const users = await res.json();
 
-        showProducts();
-      }
+      let html = `<table><tr><th>ID</th><th>Name</th><th>Email</th></tr>`;
+      users.forEach((u) => {
+        html += `<tr><td>${u.id}</td><td>${u.name}</td><td>${u.email}</td></tr>`;
+      });
+      html += "</table>";
+      document.getElementById("userTable").innerHTML = html;
+    }
 
-      function editProduct(id, title, price, description) {
-        document.getElementById("content").innerHTML = `
-    <h2>Edit Product</h2>
-    <input type="text" id="title" value="${title}">
-    <input type="number" id="price" value="${price}">
-    <textarea id="description">${description}</textarea>
-    <button class="btn save" onclick="updateProduct(${id})">Update</button>
-  `;
-      }
+    function showInquiries() {
+      document.getElementById("content").innerHTML = `<h2>Inquiries</h2><div id="inquiryTable"></div>`;
+      loadInquiries();
+    }
 
-      async function updateProduct(id) {
-        const data = {
-          title: document.getElementById("title").value,
-          price: document.getElementById("price").value,
-          description: document.getElementById("description").value,
-        };
+    async function loadInquiries() {
+      const res = await fetch(API + "/admin/inquiries", { credentials: "include" });
+      if (!res.ok) { showLogin(); return; }
+      const inquiries = await res.json();
 
-        await fetch(API + "/products/" + id, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
+      let html = `<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Message</th><th>Status</th><th>Action</th></tr>`;
+      inquiries.forEach((inq) => {
+        html += `
+          <tr>
+            <td>${inq.id}</td>
+            <td>${inq.name}</td>
+            <td>${inq.email}</td>
+            <td>${inq.message}</td>
+            <td>${inq.status}</td>
+            <td><button class="btn save" onclick="resolveInquiry(${inq.id})">Mark Resolved</button></td>
+          </tr>
+        `;
+      });
+      html += "</table>";
+      document.getElementById("inquiryTable").innerHTML = html;
+    }
 
-        showProducts();
-      }
+    async function resolveInquiry(id) {
+      await fetch(API + "/admin/inquiries/" + id, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "resolved" }),
+      });
+      loadInquiries();
+    }
 
-      async function deleteProduct(id) {
-        if (!confirm("Delete this product?")) return;
+    async function logoutAdmin() {
+      await fetch(API + "/admin/logout", { method: "POST", credentials: "include" });
+      showLogin();
+    }
 
-        await fetch(API + "/products/" + id, {
-          method: "DELETE",
-        });
+    showLogin();
+  </script>
+</body>
 
-        loadProducts();
-      }
-
-      function showUsers() {
-        document.getElementById("content").innerHTML = `
-    <h2>Users</h2>
-    <div id="userTable"></div>
-  `;
-        loadUsers();
-      }
-
-      async function loadUsers() {
-        const res = await fetch(API + "/users");
-        const users = await res.json();
-
-        let html = `
-    <table>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Email</th>
-      </tr>
-  `;
-
-        users.forEach((u) => {
-          html += `
-      <tr>
-        <td>${u.id}</td>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
-      </tr>
-    `;
-        });
-
-        html += "</table>";
-        document.getElementById("userTable").innerHTML = html;
-      }
-    </script>
-  </body>
 </html>
