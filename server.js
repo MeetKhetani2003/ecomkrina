@@ -27,7 +27,7 @@ const pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: DB_NAME,
+  database: "ecomm",
   waitForConnections: true,
   connectionLimit: 10,
 });
@@ -97,7 +97,8 @@ app.get("/api/products/:id", async (req, res) => {
     req.params.id,
   ]);
 
-  if (!rows.length) return res.status(404).json({ message: "Product not found" });
+  if (!rows.length)
+    return res.status(404).json({ message: "Product not found" });
 
   const product = rows[0];
 
@@ -109,23 +110,28 @@ app.get("/api/products/:id", async (req, res) => {
   res.json({ ...product, recommended });
 });
 
-app.post("/api/products", adminMiddleware, upload.single("image"), async (req, res) => {
-  const { title, price, description, Rating, stock } = req.body;
-  const imagePath = req.file ? `images/${req.file.filename}` : null;
+app.post(
+  "/api/products",
+  adminMiddleware,
+  upload.single("image"),
+  async (req, res) => {
+    const { title, price, description, Rating, stock } = req.body;
+    const imagePath = req.file ? `images/${req.file.filename}` : null;
 
-  const ratingValue = parseInt(Rating) || 0;
-  const stockValue = Math.max(0, parseInt(stock) || 0);
+    const ratingValue = parseInt(Rating) || 0;
+    const stockValue = Math.max(0, parseInt(stock) || 0);
 
-  if (ratingValue < 0 || ratingValue > 5)
-    return res.status(400).json({ message: "Rating 0-5 only" });
+    if (ratingValue < 0 || ratingValue > 5)
+      return res.status(400).json({ message: "Rating 0-5 only" });
 
-  await pool.query(
-    "INSERT INTO products (title, price, image, description, Rating, stock) VALUES (?,?,?,?,?,?)",
-    [title, price, imagePath, description, ratingValue, stockValue],
-  );
+    await pool.query(
+      "INSERT INTO products (title, price, image, description, Rating, stock) VALUES (?,?,?,?,?,?)",
+      [title, price, imagePath, description, ratingValue, stockValue],
+    );
 
-  res.json({ message: "Product added" });
-});
+    res.json({ message: "Product added" });
+  },
+);
 
 app.put("/api/products/:id", adminMiddleware, async (req, res) => {
   const { title, price, description, Rating, stock } = req.body;
@@ -136,9 +142,10 @@ app.put("/api/products/:id", adminMiddleware, async (req, res) => {
   if (ratingValue < 0 || ratingValue > 5)
     return res.status(400).json({ message: "Rating 0-5 only" });
 
-  const [beforeRows] = await pool.query("SELECT stock FROM products WHERE id = ?", [
-    req.params.id,
-  ]);
+  const [beforeRows] = await pool.query(
+    "SELECT stock FROM products WHERE id = ?",
+    [req.params.id],
+  );
 
   if (!beforeRows.length) {
     return res.status(404).json({ message: "Product not found" });
@@ -149,9 +156,9 @@ app.put("/api/products/:id", adminMiddleware, async (req, res) => {
     [title, price, description, ratingValue, stockValue, req.params.id],
   );
 
-  if (beforeRows[0].stock <= 0 && stockValue > 0) {
-    await sendBackInStockAlerts([req.params.id]);
-  }
+  // if (beforeRows[0].stock <= 0 && stockValue > 0) {
+  //   await sendBackInStockAlerts([req.params.id]);
+  // }
 
   res.json({ message: "Updated successfully" });
 });
@@ -182,7 +189,55 @@ app.delete("/api/products/:id", adminMiddleware, async (req, res) => {
 
   res.json({ message: "Deleted" });
 });
+/* =========================
+        ADMIN LOGIN (Password Only)
+*/
+app.post("/api/admin/login", (req, res) => {
+  const { password } = req.body;
 
+  // Set your admin password in .env
+  if (password !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ message: "Invalid admin password" });
+  }
+
+  const token = jwt.sign({ admin: true }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+
+  res.cookie("admin_token", token, {
+    httpOnly: true,
+    sameSite: "lax",
+  });
+
+  res.json({ message: "Admin login success" });
+});
+/* =========================
+        ADMIN SUMMARY
+*/
+app.get("/api/admin/summary", adminMiddleware, async (req, res) => {
+  const [[{ totalProducts }]] = await pool.query(
+    "SELECT COUNT(*) as totalProducts FROM products",
+  );
+
+  const [[{ lowStock }]] = await pool.query(
+    "SELECT COUNT(*) as lowStock FROM products WHERE stock <= 5",
+  );
+
+  const [[{ totalOrders }]] = await pool.query(
+    "SELECT COUNT(*) as totalOrders FROM orders",
+  );
+
+  const [[{ newInquiries }]] = await pool.query(
+    "SELECT COUNT(*) as newInquiries FROM inquiries WHERE status='new'",
+  );
+
+  res.json({
+    totalProducts,
+    lowStock,
+    totalOrders,
+    newInquiries,
+  });
+});
 app.post("/api/users/register", async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -261,7 +316,9 @@ app.get("/api/users/orders", authMiddleware, async (req, res) => {
 });
 
 app.get("/api/users", adminMiddleware, async (req, res) => {
-  const [users] = await pool.query("SELECT id, name, email FROM users ORDER BY id DESC");
+  const [users] = await pool.query(
+    "SELECT id, name, email FROM users ORDER BY id DESC",
+  );
   res.json(users);
 });
 
@@ -283,9 +340,10 @@ app.post("/api/cart", authMiddleware, async (req, res) => {
   const { product_id, quantity } = req.body;
   const qty = Math.max(1, parseInt(quantity) || 1);
 
-  const [products] = await pool.query("SELECT stock FROM products WHERE id = ?", [
-    product_id,
-  ]);
+  const [products] = await pool.query(
+    "SELECT stock FROM products WHERE id = ?",
+    [product_id],
+  );
 
   if (!products.length) {
     return res.status(404).json({ message: "Product not found" });
@@ -354,10 +412,10 @@ app.post("/api/wishlist", authMiddleware, async (req, res) => {
 });
 
 app.delete("/api/wishlist/:productId", authMiddleware, async (req, res) => {
-  await pool.query("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?", [
-    req.user.id,
-    req.params.productId,
-  ]);
+  await pool.query(
+    "DELETE FROM wishlist WHERE user_id = ? AND product_id = ?",
+    [req.user.id, req.params.productId],
+  );
 
   res.json({ message: "Removed from wishlist" });
 });
