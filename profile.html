@@ -1,149 +1,73 @@
 <!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile - Redstore</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Profile - Redstore</title>
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
-</head>
-
-<body>
-  <div class="container">
-    <div class="navbar">
-      <div class="logo">
-        <a href="index.html"><img src="images/logo.png" width="125px" /></a>
+  <body>
+    <div class="container">
+      <div class="navbar">
+        <div class="logo">
+          <a href="index.html"><img src="images/logo.png" width="125px" /></a>
+        </div>
+        <nav>
+          <ul id="MenuItems">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="wishlist.html">Wishlist</a></li>
+            <li><a href="profile.html">Profile</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </nav>
+        <a href="cart.html"><img src="images/cart.png" width="30px" /></a>
       </div>
-      <nav>
-        <ul id="MenuItems">
-          <li><a href="index.html">Home</a></li>
-          <li><a href="products.html">Products</a></li>
-          <li><a href="About.html">About</a></li>
-          <li><a href="contact.html">Contact</a></li>
-        </ul>
-      </nav>
-      <div class="nav-icons">
-        <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
-        <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
-        <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
-      </div>
-      <img src="images/menu.png" class="menu-icon" onclick="menutoggle()" />
-    </div>
-  </div>
-
-  <div class="small-container profile-page">
-    <h2 class="title">My Profile</h2>
-
-    <div class="profile-tabs">
-      <button class="active" onclick="showTab('tabProfile', this)">Profile</button>
-      <button onclick="showTab('tabOrders', this)">Order History</button>
     </div>
 
-    <div id="tabProfile" class="profile-tab-content active">
+    <div class="small-container" style="max-width: 700px; min-height: 50vh">
+      <h2 class="title">My Profile</h2>
       <div id="profile-card" style="padding: 20px; border: 1px solid #ddd; border-radius: 8px; display:none;">
         <p><strong>Name:</strong> <span id="profile-name"></span></p>
         <p><strong>Email:</strong> <span id="profile-email"></span></p>
         <p><strong>User ID:</strong> <span id="profile-id"></span></p>
-        <button class="btn" onclick="logoutUser()">Logout</button>
       </div>
       <p id="profile-loading" style="text-align:center;">Loading profile...</p>
     </div>
 
-    <div id="tabOrders" class="profile-tab-content">
-      <div id="orders-list"></div>
-    </div>
-  </div>
+    <script>
+      async function loadProfile() {
+        try {
+          const response = await fetch("/api/users/profile", {
+            credentials: "include",
+          });
 
-  <script>
-    var menuItems = document.getElementById("MenuItems");
-    MenuItems.style.maxHeight = "0px";
+          if (!response.ok) {
+            alert("Please login first");
+            window.location.href = "account.html";
+            return;
+          }
 
-    function menutoggle() {
-      if (MenuItems.style.maxHeight == "0px") {
-        MenuItems.style.maxHeight = "260px";
-      } else {
-        MenuItems.style.maxHeight = "0px";
-      }
-    }
+          const profile = await response.json();
+          document.getElementById("profile-name").innerText = profile.name;
+          document.getElementById("profile-email").innerText = profile.email;
+          document.getElementById("profile-id").innerText = profile.id;
 
-    function showTab(tabId, btn) {
-      document.querySelectorAll(".profile-tab-content").forEach((tab) => tab.classList.remove("active"));
-      document.querySelectorAll(".profile-tabs button").forEach((tabBtn) => tabBtn.classList.remove("active"));
-
-      document.getElementById(tabId).classList.add("active");
-      btn.classList.add("active");
-    }
-
-    async function loadProfile() {
-      const response = await fetch("/api/users/profile", {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        alert("Please login first");
-        window.location.href = "account.html";
-        return;
+          document.getElementById("profile-loading").style.display = "none";
+          document.getElementById("profile-card").style.display = "block";
+        } catch (error) {
+          console.error(error);
+          document.getElementById("profile-loading").innerText =
+            "Unable to load profile";
+        }
       }
 
-      const profile = await response.json();
-      document.getElementById("profile-name").innerText = profile.name;
-      document.getElementById("profile-email").innerText = profile.email;
-      document.getElementById("profile-id").innerText = profile.id;
-
-      document.getElementById("profile-loading").style.display = "none";
-      document.getElementById("profile-card").style.display = "block";
-    }
-
-    async function loadOrders() {
-      const response = await fetch("/api/users/orders", {
-        credentials: "include",
-      });
-
-      if (!response.ok) return;
-
-      const orders = await response.json();
-      const container = document.getElementById("orders-list");
-
-      if (!orders.length) {
-        container.innerHTML = "<p>No orders yet.</p>";
-        return;
-      }
-
-      container.innerHTML = orders
-        .map((order) => `
-          <div class="order-card">
-            <p><strong>Order #${order.id}</strong></p>
-            <p>Date: ${new Date(order.created_at).toLocaleDateString()}</p>
-            <p>Total: $${Number(order.total).toFixed(2)}</p>
-            <a class="btn" href="order.html?id=${order.id}">View Details</a>
-            <a class="btn" href="/api/orders/${order.id}/invoice" target="_blank">Download Invoice PDF</a>
-          </div>
-        `)
-        .join("");
-    }
-
-    async function logoutUser() {
-      await fetch("/api/users/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      localStorage.removeItem("user");
-      alert("Logged out successfully");
-      window.location.href = "account.html";
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      try {
-        await loadProfile();
-        await loadOrders();
-      } catch (error) {
-        console.error(error);
-      }
-    });
-  </script>
-</body>
-
+      document.addEventListener("DOMContentLoaded", loadProfile);
+    </script>
+  </body>
 </html>
