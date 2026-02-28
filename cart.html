@@ -1,204 +1,172 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cart - Redstore</title>
-    <link rel="stylesheet" href="style.css" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
-    />
-  </head>
 
-  <body>
-    <div class="container">
-      <div class="navbar">
-        <div class="logo">
-          <a href="index.html"><img src="images/logo.png" width="125px" /></a>
-        </div>
-        <nav>
-          <ul id="MenuItems">
-            <li><a href="index.html">Home</a></li>
-            <li><a href="products.html">Products</a></li>
-            <li><a href="account.html">Account</a></li>
-          </ul>
-        </nav>
-        <a href="cart.html"><img src="images/cart.png" width="30px" /></a>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cart - Redstore</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+</head>
+
+<body>
+  <div class="container">
+    <div class="navbar">
+      <div class="logo">
+        <a href="index.html"><img src="images/logo.png" width="125px" /></a>
       </div>
+      <nav>
+        <ul id="MenuItems">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="About.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="nav-icons">
+        <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
+        <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
+        <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+      </div>
+      <img src="images/menu.png" class="menu-icon" onclick="menutoggle()" />
     </div>
+  </div>
 
-    <!---------------- CART ---------------->
+  <div class="small-container cart-page">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Sub total</th>
+        </tr>
+      </thead>
+      <tbody id="cart-body"></tbody>
+    </table>
 
-    <div class="small-container cart-page">
+    <div class="total-price">
       <table>
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Sub total</th>
-          </tr>
-        </thead>
-        <tbody id="cart-body">
-          <!-- Dynamic rows -->
-        </tbody>
+        <tr>
+          <td>Subtotal</td>
+          <td id="subtotal">$0.00</td>
+        </tr>
+        <tr>
+          <td>Tax (10%)</td>
+          <td id="tax">$0.00</td>
+        </tr>
+        <tr>
+          <td>Total</td>
+          <td id="total">$0.00</td>
+        </tr>
       </table>
-
-      <div class="total-price">
-        <table>
-          <tr>
-            <td>Subtotal</td>
-            <td id="subtotal">$0.00</td>
-          </tr>
-          <tr>
-            <td>Tax (10%)</td>
-            <td id="tax">$0.00</td>
-          </tr>
-          <tr>
-            <td>Total</td>
-            <td id="total">$0.00</td>
-          </tr>
-        </table>
-      </div>
-
-      <div style="text-align: right; margin-top: 20px">
-        <a href="#" class="btn" onclick="placeOrder()">Order</a>
-      </div>
     </div>
 
-    <!---------------- FOOTER ---------------->
-
-    <div class="footer">
-      <div class="container">
-        <div class="footer-col-2">
-          <img src="images/logo-white.png" />
-          <p>
-            Our Purpose Is To Sustainably Make the Pleasure and Benefits of
-            Sports Accessible to the Many.
-          </p>
-        </div>
-      </div>
+    <div style="text-align: right; margin-top: 20px">
+      <a href="#" class="btn" onclick="placeOrder()">Complete Purchase</a>
     </div>
+  </div>
 
-    <!---------------- SCRIPT ---------------->
-
-    <script>
-      async function placeOrder() {
-        try {
-          const response = await fetch("/api/orders", {
-            method: "POST",
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            alert("Login required");
-            return;
-          }
-
-          const data = await response.json();
-
-          window.location.href = "order.html?id=" + data.order.id;
-        } catch (err) {
-          alert("Order failed");
-        }
-      }
-
-      function formatMoney(n) {
-        return "$" + n.toFixed(2);
-      }
-
-      async function loadCart() {
-        try {
-          const response = await fetch("/api/cart", {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            alert("Please login first");
-            window.location.href = "account.html";
-            return;
-          }
-
-          const items = await response.json();
-
-          const tbody = document.getElementById("cart-body");
-          tbody.innerHTML = "";
-
-          let subtotal = 0;
-
-          items.forEach((item) => {
-            const rowTotal = item.price * item.quantity;
-            subtotal += rowTotal;
-
-            const tr = document.createElement("tr");
-
-            tr.innerHTML = `
-                <td>
-                    <div class="cart-info">
-                        <img src="${item.image}">
-                        <div>
-                            <p>${item.title}</p>
-                            <small>Price: $${item.price}</small><br>
-                            <a href="#" onclick="removeItem(${item.id})">Remove</a>
-                        </div>
-                    </div>
-                </td>
-                <td>${item.quantity}</td>
-                <td>${formatMoney(rowTotal)}</td>
-            `;
-
-            tbody.appendChild(tr);
-          });
-
-          updateTotals(subtotal);
-        } catch (err) {
-          console.error(err);
-          alert("Error loading cart");
-        }
-      }
-
-      function updateTotals(subtotal) {
-        const tax = subtotal * 0.1;
-        const total = subtotal + tax;
-
-        document.getElementById("subtotal").innerText = formatMoney(subtotal);
-        document.getElementById("tax").innerText = formatMoney(tax);
-        document.getElementById("total").innerText = formatMoney(total);
-      }
-
-      async function removeItem(id) {
-        await fetch("/api/cart/" + id, {
-          method: "DELETE",
-          credentials: "include",
-        });
-
-        loadCart();
-      }
-
-      document.addEventListener("DOMContentLoaded", loadCart);
-    </script>
-    <script>
-      document.addEventListener("DOMContentLoaded", async () => {
-        const params = new URLSearchParams(window.location.search);
-        const orderId = params.get("id");
-
-        if (!orderId) return;
-
-        const res = await fetch("/api/orders/" + orderId, {
-          credentials: "include",
-        });
-
-        const order = await res.json();
-
-        document.getElementById("order-number").innerText = order.id;
-        document.getElementById("order-date").innerText = new Date(
-          order.created_at,
-        ).toLocaleDateString();
+  <script>
+    async function placeOrder() {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        credentials: "include",
       });
-    </script>
-  </body>
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Login required");
+        if (response.status === 401) window.location.href = "account.html";
+        return;
+      }
+
+      alert("Purchase completed! Invoice sent to your email (if SMTP configured).");
+      window.location.href = "order.html?id=" + data.order.id;
+    }
+
+    function formatMoney(n) {
+      return "$" + n.toFixed(2);
+    }
+
+    async function loadCart() {
+      const response = await fetch("/api/cart", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        alert("Please login first");
+        window.location.href = "account.html";
+        return;
+      }
+
+      const items = await response.json();
+      const tbody = document.getElementById("cart-body");
+      tbody.innerHTML = "";
+
+      let subtotal = 0;
+
+      items.forEach((item) => {
+        const rowTotal = item.price * item.quantity;
+        subtotal += rowTotal;
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>
+                <div class="cart-info">
+                    <img src="${item.image}">
+                    <div>
+                        <p>${item.title}</p>
+                        <small>Price: $${item.price}</small><br>
+                        <small class="stock-label ${item.stock > 0 ? "stock-in" : "stock-out"}">${item.stock > 0 ? "In stock" : "Out of stock"}</small><br>
+                        <a href="#" onclick="removeItem(${item.id})">Remove</a>
+                    </div>
+                </div>
+            </td>
+            <td>${item.quantity}</td>
+            <td>${formatMoney(rowTotal)}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      updateTotals(subtotal);
+    }
+
+    function updateTotals(subtotal) {
+      const tax = subtotal * 0.1;
+      const total = subtotal + tax;
+
+      document.getElementById("subtotal").innerText = formatMoney(subtotal);
+      document.getElementById("tax").innerText = formatMoney(tax);
+      document.getElementById("total").innerText = formatMoney(total);
+    }
+
+    async function removeItem(id) {
+      await fetch("/api/cart/" + id, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      loadCart();
+    }
+
+    document.addEventListener("DOMContentLoaded", loadCart);
+  </script>
+  <script>
+    var menuItems = document.getElementById("MenuItems");
+    MenuItems.style.maxHeight = "0px";
+
+    function menutoggle() {
+      if (MenuItems.style.maxHeight == "0px") {
+        MenuItems.style.maxHeight = "260px";
+      } else {
+        MenuItems.style.maxHeight = "0px";
+      }
+    }
+  </script>
+</body>
+
 </html>
