@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width-device-width, initial-scale=1.0">
+    <title>Redstore | Ecommerce website</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!--added a cdn link by searching font awesome4 cdn and getting this link from https://www.bootstrapcdn.com/fontawesome/ this url*/-->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+
+</head>
+
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="navbar">
+                <div class="logo">
+                    <a href="index.html"><img src="images/logo.png" width="125px"></a>
+                </div>
+                <nav>
+                    <ul id="MenuItems">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="products.html">Products</a></li>
+                        <li><a href="About.html">About</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="account.html">Account</a></li>
+
+                    </ul>
+                </nav>
+                <a href="cart.html"><img src="images/cart.png" width="30px" height="30px"></a>
+                <img src="images/menu.png" class="menu-icon" onClick="menutoggle()">
+            </div>
+            <div class="row">
+                <div class="col-2">
+                    <h1>Give your Workout <br>A New Style!</h1>
+                    <p>Success isn't always about greatness. It's about consistency. Consistent<br>hard work gains
+                        success. Greatness will come.</p>
+                    <a href="products.html" class="btn">Explore Now &#8594;</a>
+                </div>
+                <div class="col-2">
+                    <img src="images/image1.png">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!------------------------------ featured categories------------------------------>
+
+    <!------------------------------ featured Products------------------------------>
+<div class="small-container">
+    <h2 class="title">Products</h2>
+    <div class="row" id="product-list"></div>
+</div>
+
+    <!--------------------------`   offer   --------------------------------->
+    <div class="offer">
+        <div class="small-container">
+            <div class="row">
+                <div class="col-2">
+                    <img src="images/image1.png" class="offer-img">
+                </div>
+                <div class="col-2">
+                    <p>Exclusively Available on RedStore</p>
+                    <h1>Sports Shoes</h1>
+                    <small> Buy latest collections of sports shoes online on Redstore at best prices from top brands
+                        such as Adidas, Nike, Puma, Asics, and Sparx at your leisure at best prices. </small><br>
+                    <a href="products.html" class="btn">Buy Now &#8594;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <hr><!--horizontal line-->
+
+
+    </div>
+    </div>
+
+
+    <!-----------------------------------js for toggle menu----------------------------------------------->
+    <script>
+        var menuItems = document.getElementById("MenuItems");
+
+        MenuItems.style.maxHeight = "0px";
+        function menutoggle() {
+            if (MenuItems.style.maxHeight == "0px") {
+                MenuItems.style.maxHeight = "200px";
+            }
+            else {
+                MenuItems.style.maxHeight = "0px";
+            }
+        }
+    </script>
+    <!-- Script: redirect product clicks to add-to-cart page with item data -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Find all product columns inside small-container
+            const productCols = document.querySelectorAll('.small-container .col-4');
+            productCols.forEach(function (col) {
+                // attach click to any anchor or image inside the col-4
+                const anchors = col.querySelectorAll('a');
+                anchors.forEach(function (a) {
+                    a.addEventListener('click', function (e) {
+                        // Prevent default link behavior
+                        e.preventDefault();
+                        // Extract values from this product card
+                        const imgEl = col.querySelector('img');
+                        const titleEl = col.querySelector('h4');
+                        const priceEl = col.querySelector('p');
+                        const img = imgEl ? imgEl.getAttribute('src') : '';
+                        const title = titleEl ? titleEl.innerText.trim() : '';
+                        // price text like "$15.00" -> extract number
+                        let price = '';
+                        if (priceEl) price = priceEl.innerText.replace(/[^0-9\.]/g, '');
+                        const desc = title + ' — High quality product.';
+                        const url = 'add-to-cart.html?img=' + encodeURIComponent(img) + '&title=' + encodeURIComponent(title) + '&price=' + encodeURIComponent(price) + '&desc=' + encodeURIComponent(desc);
+                        window.location.href = url;
+                    });
+                });
+            });
+        });
+    </script>
+<script>
+function generateStars(rating) {
+    let starsHTML = "";
+    rating = parseInt(rating) || 0;
+
+    for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+            starsHTML += '<i class="fa fa-star"></i>';
+        } else {
+            starsHTML += '<i class="fa fa-star-o"></i>';
+        }
+    }
+
+    return starsHTML;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+
+    const container = document.getElementById("product-list");
+
+    try {
+        const response = await fetch("/api/products");
+        const products = await response.json();
+
+        let html = "";
+
+        products.forEach(product => {
+            html += `
+                <div class="col-4 product-card">
+                    <div onclick="goToProduct(${product.id})" style="cursor:pointer">
+                        <img src="${product.image}" alt="${product.title}">
+                        <h4>${product.title}</h4>
+                        <div class="rating">
+                            ${generateStars(product.Rating)}
+                        </div>
+                        <p>$${product.price}</p>
+                    </div>
+
+                    <button class="btn add-btn"
+                        onclick="addToCart(event, ${product.id})">
+                        Add to Cart
+                    </button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error("Error loading products:", error);
+    }
+});
+
+function goToProduct(id) {
+    window.location.href = "product-details.html?id=" + id;
+}
+</script>
+
+
+</body>
+
+</html>

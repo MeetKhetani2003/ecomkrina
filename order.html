@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Confirmation - Redstore</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+  </head>
+
+  <body>
+    <!-- Navbar -->
+    <div class="container">
+      <div class="navbar">
+        <div class="logo">
+          <a href="index.html"><img src="images/logo.png" width="125" /></a>
+        </div>
+        <nav>
+          <ul id="MenuItems">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </nav>
+        <a href="cart.html"><img src="images/cart.png" width="30" /></a>
+      </div>
+    </div>
+
+    <!-- Order Section -->
+    <main class="small-container" style="padding: 40px 0">
+      <div style="max-width: 800px; margin: 0 auto; text-align: center">
+        <img src="images/cart.png" style="width: 80px; margin-bottom: 16px" />
+        <h1>Your order has been confirmed</h1>
+        <p>Thank you for your purchase! We’ve received your order.</p>
+
+        <!-- Order Details -->
+        <section style="margin-top: 24px; text-align: left">
+          <h3>Order details</h3>
+          <p>
+            Order number: <strong>#<span id="order-number">-</span></strong>
+          </p>
+          <p>
+            Placed on: <strong><span id="order-date">-</span></strong>
+          </p>
+
+          <table
+            style="width: 100%; border-collapse: collapse; margin-top: 12px"
+          >
+            <thead>
+              <tr style="background: #f5f5f5; text-align: left">
+                <th style="padding: 8px">Product</th>
+                <th style="padding: 8px; text-align: center">Qty</th>
+                <th style="padding: 8px; text-align: right">Price</th>
+              </tr>
+            </thead>
+
+            <tbody id="order-items">
+              <!-- Dynamic rows -->
+            </tbody>
+
+            <tfoot>
+              <tr>
+                <td></td>
+                <td style="padding: 8px; text-align: center">Subtotal</td>
+                <td style="padding: 8px; text-align: right" id="subtotal">
+                  $0.00
+                </td>
+              </tr>
+              <tr>
+                <td></td>
+                <td style="padding: 8px; text-align: center">Tax (10%)</td>
+                <td style="padding: 8px; text-align: right" id="tax">$0.00</td>
+              </tr>
+              <tr style="font-weight: bold">
+                <td></td>
+                <td style="padding: 8px; text-align: center">Total</td>
+                <td style="padding: 8px; text-align: right" id="total">
+                  $0.00
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+
+        <div style="margin-top: 24px">
+          <a class="btn" href="products.html">Continue Shopping</a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="container">
+        <div class="footer-col-2">
+          <img src="images/logo-white.png" />
+          <p>
+            Our Purpose Is To Sustainably Make the Pleasure and Benefits of
+            Sports Accessible to the Many.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Script -->
+    <script>
+      function formatMoney(n) {
+        return "$" + n.toFixed(2);
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get("id");
+
+        if (!orderId) {
+          alert("Invalid order.");
+          window.location.href = "index.html";
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/orders/" + orderId, {
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            alert("Order not found or login required.");
+            window.location.href = "account.html";
+            return;
+          }
+
+          const data = await response.json();
+          const order = data.order;
+          const items = data.items;
+
+          document.getElementById("order-number").innerText = order.id;
+          document.getElementById("order-date").innerText = new Date(
+            order.created_at,
+          ).toLocaleDateString();
+
+          const tbody = document.getElementById("order-items");
+
+          let subtotal = 0;
+
+          items.forEach((item) => {
+            const rowTotal = item.price * item.quantity;
+            subtotal += rowTotal;
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                        <td style="padding:8px">${item.title}</td>
+                        <td style="padding:8px;text-align:center">${item.quantity}</td>
+                        <td style="padding:8px;text-align:right">${formatMoney(rowTotal)}</td>
+                    `;
+
+            tbody.appendChild(row);
+          });
+
+          const tax = subtotal * 0.1;
+          const total = subtotal + tax;
+
+          document.getElementById("subtotal").innerText = formatMoney(subtotal);
+          document.getElementById("tax").innerText = formatMoney(tax);
+          document.getElementById("total").innerText = formatMoney(total);
+        } catch (err) {
+          console.error(err);
+          alert("Something went wrong.");
+        }
+      });
+    </script>
+  </body>
+</html>

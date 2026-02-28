@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Admin Dashboard</title>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial;
+        display: flex;
+      }
+      .sidebar {
+        width: 220px;
+        background: #111;
+        color: white;
+        height: 100vh;
+        padding: 20px;
+      }
+      .sidebar h2 {
+        margin-bottom: 30px;
+      }
+      .sidebar button {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        background: #333;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      .sidebar button:hover {
+        background: #555;
+      }
+
+      .content {
+        flex: 1;
+        padding: 30px;
+        background: #f4f4f4;
+        overflow: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+      }
+
+      table th,
+      table td {
+        padding: 10px;
+        border: 1px solid #ddd;
+      }
+
+      table th {
+        background: #eee;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+      }
+
+      .btn {
+        padding: 6px 10px;
+        border: none;
+        cursor: pointer;
+        color: white;
+      }
+
+      .edit {
+        background: orange;
+      }
+      .delete {
+        background: red;
+      }
+      .save {
+        background: green;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="sidebar">
+      <h2>Admin</h2>
+      <button onclick="showProducts()">Products</button>
+      <button onclick="showUsers()">Users</button>
+    </div>
+
+    <div class="content" id="content">
+      <h2>Welcome Admin</h2>
+    </div>
+
+    <script>
+      const API = "/api";
+
+      function showProducts() {
+        document.getElementById("content").innerHTML = `
+    <h2>Products</h2>
+    <button onclick="showAddForm()">+ Add Product</button>
+    <div id="productTable"></div>
+  `;
+        loadProducts();
+      }
+
+      async function loadProducts() {
+        const res = await fetch(API + "/products");
+        const products = await res.json();
+
+        let html = `
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Image</th>
+        <th>Title</th>
+        <th>Price</th>
+        <th>Actions</th>
+      </tr>
+  `;
+
+        products.forEach((p) => {
+          html += `
+      <tr>
+        <td>${p.id}</td>
+        <td><img src="${p.image}" width="50"></td>
+        <td>${p.title}</td>
+        <td>$${p.price}</td>
+        <td>
+          <button class="btn edit" onclick="editProduct(${p.id}, '${p.title}', '${p.price}', '${p.description}')">Edit</button>
+          <button class="btn delete" onclick="deleteProduct(${p.id})">Delete</button>
+        </td>
+      </tr>
+    `;
+        });
+
+        html += "</table>";
+        document.getElementById("productTable").innerHTML = html;
+      }
+
+      function showAddForm() {
+        document.getElementById("content").innerHTML = `
+    <h2>Add Product</h2>
+    <input type="text" id="title" placeholder="Title">
+    <input type="number" id="price" placeholder="Price">
+    <textarea id="description" placeholder="Description"></textarea>
+    <input type="file" id="image">
+    <button class="btn save" onclick="addProduct()">Save</button>
+  `;
+      }
+
+      async function addProduct() {
+        const formData = new FormData();
+        formData.append("title", document.getElementById("title").value);
+        formData.append("price", document.getElementById("price").value);
+        formData.append(
+          "description",
+          document.getElementById("description").value,
+        );
+
+        const imageFile = document.getElementById("image").files[0];
+        if (imageFile) {
+          formData.append("image", imageFile);
+        }
+
+        await fetch("/api/products", {
+          method: "POST",
+          body: formData,
+        });
+
+        showProducts();
+      }
+
+      function editProduct(id, title, price, description) {
+        document.getElementById("content").innerHTML = `
+    <h2>Edit Product</h2>
+    <input type="text" id="title" value="${title}">
+    <input type="number" id="price" value="${price}">
+    <textarea id="description">${description}</textarea>
+    <button class="btn save" onclick="updateProduct(${id})">Update</button>
+  `;
+      }
+
+      async function updateProduct(id) {
+        const data = {
+          title: document.getElementById("title").value,
+          price: document.getElementById("price").value,
+          description: document.getElementById("description").value,
+        };
+
+        await fetch(API + "/products/" + id, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        showProducts();
+      }
+
+      async function deleteProduct(id) {
+        if (!confirm("Delete this product?")) return;
+
+        await fetch(API + "/products/" + id, {
+          method: "DELETE",
+        });
+
+        loadProducts();
+      }
+
+      function showUsers() {
+        document.getElementById("content").innerHTML = `
+    <h2>Users</h2>
+    <div id="userTable"></div>
+  `;
+        loadUsers();
+      }
+
+      async function loadUsers() {
+        const res = await fetch(API + "/users");
+        const users = await res.json();
+
+        let html = `
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+      </tr>
+  `;
+
+        users.forEach((u) => {
+          html += `
+      <tr>
+        <td>${u.id}</td>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+      </tr>
+    `;
+        });
+
+        html += "</table>";
+        document.getElementById("userTable").innerHTML = html;
+      }
+    </script>
+  </body>
+</html>

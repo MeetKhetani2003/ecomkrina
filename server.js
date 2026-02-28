@@ -1,0 +1,229 @@
+import express from "express";
+import cors from "cors";
+import multer from "multer";
+import fs from "fs";
+import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
+import mysql from "mysql2/promise";
+
+dotenv.config();
+
+const app = express();
+
+/* =========================
+    MIDDLEWARE
+========================= */
+
+app.use(
+  cors({
+    origin: "http://localhost:5000",
+    credentials: true,
+  }),
+);
+
+app.use(express.json());
+app.use(cookieParser());
+app.use(express.static("./"));
+
+/* =========================
+    DATABASE
+========================= */
+
+const pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: "ecomm",
+  waitForConnections: true,
+  connectionLimit: 10,
+});
+
+/* =========================
+    IMAGE UPLOAD
+========================= */
+
+const uploadDir = "./images";
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+});
+
+const upload = multer({ storage });
+
+/* =========================
+    AUTH MIDDLEWARE
+========================= */
+
+const authMiddleware = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) return res.status(401).json({ message: "Login required" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+/* =========================
+        PRODUCTS
+========================= */
+
+// Get All
+app.get("/api/products", async (req, res) => {
+  const [rows] = await pool.query("SELECT * FROM products ORDER BY id DESC");
+  res.json(rows);
+});
+
+// Get Single
+app.get("/api/products/:id", async (req, res) => {
+  const [rows] = await pool.query("SELECT * FROM products WHERE id=?", [
+    req.params.id,
+  ]);
+  res.json(rows[0]);
+});
+
+// Add Product
+app.post("/api/products", upload.single("image"), async (req, res) => {
+  const { title, price, description, Rating } = req.body;
+  const imagePath = req.file ? `images/${req.file.filename}` : null;
+
+  const ratingValue = parseInt(Rating) || 0;
+
+  if (ratingValue < 0 || ratingValue > 5)
+    return res.status(400).json({ message: "Rating 0-5 only" });
+
+  await pool.query(
+    "INSERT INTO products (title, price, image, description, Rating) VALUES (?,?,?,?,?)",
+    [title, price, imagePath, description, ratingValue],
+  );
+
+  res.json({ message: "Product added" });
+});
+
+// Update Product
+app.put("/api/products/:id", async (req, res) => {
+  const { title, price, description, Rating } = req.body;
+
+  const ratingValue = parseInt(Rating);
+
+  if (ratingValue < 0 || ratingValue > 5)
+    return res.status(400).json({ message: "Rating 0-5 only" });
+
+  await pool.query(
+    "UPDATE products SET title=?, price=?, description=?, Rating=? WHERE id=?",
+    [title, price, description, ratingValue, req.params.id],
+  );
+
+  res.json({ message: "Updated successfully" });
+});
+
+// ⭐ RATE PRODUCT (LOGIN REQUIRED)
+app.put("/api/products/:id/rating", authMiddleware, async (req, res) => {
+  const ratingValue = parseInt(req.body.Rating);
+
+  if (!ratingValue || ratingValue < 1 || ratingValue > 5)
+    return res.status(400).json({ message: "Rating must be 1-5" });
+
+  await pool.query("UPDATE products SET Rating=? WHERE id=?", [
+    ratingValue,
+    req.params.id,
+  ]);
+
+  res.json({ message: "Rated successfully" });
+});
+
+// Delete
+app.delete("/api/products/:id", async (req, res) => {
+  const [rows] = await pool.query("SELECT image FROM products WHERE id=?", [
+    req.params.id,
+  ]);
+
+  if (rows.length && rows[0].image && fs.existsSync(rows[0].image))
+    fs.unlinkSync(rows[0].image);
+
+  await pool.query("DELETE FROM products WHERE id=?", [req.params.id]);
+
+  res.json({ message: "Deleted" });
+});
+
+/* =========================
+        USERS
+========================= */
+
+app.post("/api/users/register", async (req, res) => {
+  const { name, email, password } = req.body;
+
+  await pool.query("INSERT INTO users (name,email,password) VALUES (?,?,?)", [
+    name,
+    email,
+    password,
+  ]);
+
+  res.json({ message: "Registered" });
+});
+
+app.post("/api/users/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  const [rows] = await pool.query(
+    "SELECT * FROM users WHERE email=? AND password=?",
+    [email, password],
+  );
+
+  if (!rows.length)
+    return res.status(401).json({ message: "Invalid credentials" });
+
+  const token = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    sameSite: "lax",
+  });
+
+  res.json({ message: "Login success" });
+});
+
+/* =========================
+        CART
+========================= */
+
+app.get("/api/cart", authMiddleware, async (req, res) => {
+  const [rows] = await pool.query(
+    `
+    SELECT cart.id, products.title, products.price, products.image, cart.quantity
+    FROM cart
+    JOIN products ON cart.product_id = products.id
+    WHERE cart.user_id=?
+  `,
+    [req.user.id],
+  );
+
+  res.json(rows);
+});
+
+app.post("/api/cart", authMiddleware, async (req, res) => {
+  const { product_id, quantity } = req.body;
+
+  await pool.query(
+    "INSERT INTO cart (user_id,product_id,quantity) VALUES (?,?,?)",
+    [req.user.id, product_id, quantity],
+  );
+
+  res.json({ message: "Added to cart" });
+});
+
+/* =========================
+        START
+========================= */
+
+app.listen(5000, () =>
+  console.log("🚀 Server running on http://localhost:5000"),
+);
