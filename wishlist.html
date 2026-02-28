@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wishlist - Redstore</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+</head>
+
+<body>
+  <div class="container">
+    <div class="navbar">
+      <div class="logo">
+        <a href="index.html"><img src="images/logo.png" width="125px" /></a>
+      </div>
+      <nav>
+        <ul id="MenuItems">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="About.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="nav-icons">
+        <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
+        <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
+        <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+      </div>
+      <img src="images/menu.png" class="menu-icon" onclick="menutoggle()" />
+    </div>
+  </div>
+
+  <div class="small-container" style="min-height: 50vh">
+    <h2 class="title">My Wishlist</h2>
+    <div id="wishlist-items" class="row"></div>
+    <p id="empty-message" style="text-align: center; color: #555; display: none">
+      Your wishlist is empty.
+    </p>
+  </div>
+
+  <script>
+    var menuItems = document.getElementById("MenuItems");
+    MenuItems.style.maxHeight = "0px";
+
+    function menutoggle() {
+      if (MenuItems.style.maxHeight == "0px") {
+        MenuItems.style.maxHeight = "260px";
+      } else {
+        MenuItems.style.maxHeight = "0px";
+      }
+    }
+
+    async function loadWishlist() {
+      try {
+        const response = await fetch("/api/wishlist", {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          alert("Please login first");
+          window.location.href = "account.html";
+          return;
+        }
+
+        const items = await response.json();
+        const container = document.getElementById("wishlist-items");
+        const empty = document.getElementById("empty-message");
+
+        container.innerHTML = "";
+
+        if (!items.length) {
+          empty.style.display = "block";
+          return;
+        }
+
+        empty.style.display = "none";
+
+        items.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "col-4";
+          card.innerHTML = `
+              <img src="${item.image}" alt="${item.title}" onclick="goToProduct(${item.id})" style="cursor:pointer" />
+              <h4 onclick="goToProduct(${item.id})" style="cursor:pointer">${item.title}</h4>
+              <p>$${item.price}</p>
+              <p class="stock-label ${item.stock > 0 ? "stock-in" : "stock-out"}">${item.stock > 0 ? `In stock (${item.stock})` : "Out of stock"}</p>
+              <button class="btn" onclick="removeWishlist(${item.id})">Remove</button>
+            `;
+          container.appendChild(card);
+        });
+      } catch (error) {
+        console.error(error);
+        alert("Error loading wishlist");
+      }
+    }
+
+    function goToProduct(id) {
+      window.location.href = "product-details.html?id=" + id;
+    }
+
+    async function removeWishlist(productId) {
+      await fetch("/api/wishlist/" + productId, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      loadWishlist();
+    }
+
+    document.addEventListener("DOMContentLoaded", loadWishlist);
+  </script>
+</body>
+
+</html>
