@@ -27,7 +27,7 @@ const pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: "ecomm",
+  database: DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
 });
