@@ -1,33 +1,37 @@
 <!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cart - Redstore</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+  </head>
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cart - Redstore</title>
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
-</head>
+  <body>
+    <div class="container">
+      <div class="navbar">
+        <div class="logo">
+          <a href="index.html"><img src="images/logo.png" width="125px" /></a>
+        </div>
+        <nav>
+          <ul id="MenuItems">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="wishlist.html">Wishlist</a></li>
+                        <li><a href="profile.html">Profile</a></li>
 
-<body>
-  <div class="container">
-    <div class="navbar">
-      <div class="logo">
-        <a href="index.html"><img src="images/logo.png" width="125px" /></a>
-      </div>
-      <nav>
-        <ul id="MenuItems">
-          <li><a href="index.html">Home</a></li>
-          <li><a href="products.html">Products</a></li>
-          <li><a href="About.html">About</a></li>
-          <li><a href="contact.html">Contact</a></li>
-        </ul>
-      </nav>
-      <div class="nav-icons">
-        <a href="wishlist.html" title="Wishlist"><i class="fa fa-heart-o"></i></a>
-        <a href="profile.html" title="Profile"><i class="fa fa-user"></i></a>
-        <a href="cart.html" title="Cart"><i class="fa fa-shopping-cart"></i></a>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </nav>
+        <a href="cart.html"><img src="images/cart.png" width="30px" /></a>
       </div>
       <img src="images/menu.png" class="menu-icon" onclick="menutoggle()" />
     </div>
@@ -154,18 +158,6 @@
     }
 
     document.addEventListener("DOMContentLoaded", loadCart);
-  </script>
-  <script>
-    var menuItems = document.getElementById("MenuItems");
-    MenuItems.style.maxHeight = "0px";
-
-    function menutoggle() {
-      if (MenuItems.style.maxHeight == "0px") {
-        MenuItems.style.maxHeight = "260px";
-      } else {
-        MenuItems.style.maxHeight = "0px";
-      }
-    }
   </script>
 </body>
 
