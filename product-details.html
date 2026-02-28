@@ -28,6 +28,9 @@
             <li><a href="products.html">Products</a></li>
             <li><a href="#">About</a></li>
             <li><a href="#">Contact</a></li>
+            <li><a href="wishlist.html">Wishlist</a></li>
+                        <li><a href="profile.html">Profile</a></li>
+
             <li><a href="account.html">Account</a></li>
           </ul>
         </nav>
@@ -56,6 +59,7 @@
           <p id="productDescription"></p>
           <br />
           <button class="btn" onclick="addToCart()">Add to Cart</button>
+          <button class="btn" id="wishlistBtn" onclick="toggleWishlist()" style="margin-left: 10px">Add to Wishlist</button>
         </div>
       </div>
     </div>
@@ -137,7 +141,70 @@
         );
 
         window.currentProduct = product;
+        syncWishlistButton(product.id);
       });
+
+
+      async function syncWishlistButton(productId) {
+        const wishlistBtn = document.getElementById("wishlistBtn");
+
+        try {
+          const res = await fetch("/api/wishlist/" + productId, {
+            credentials: "include",
+          });
+
+          if (!res.ok) {
+            wishlistBtn.innerText = "Add to Wishlist";
+            wishlistBtn.dataset.inWishlist = "false";
+            return;
+          }
+
+          const data = await res.json();
+          wishlistBtn.dataset.inWishlist = data.inWishlist ? "true" : "false";
+          wishlistBtn.innerText = data.inWishlist
+            ? "Remove from Wishlist"
+            : "Add to Wishlist";
+        } catch (error) {
+          console.error("Failed to check wishlist:", error);
+        }
+      }
+
+      async function toggleWishlist() {
+        const product = window.currentProduct;
+
+        if (!product) return;
+
+        const wishlistBtn = document.getElementById("wishlistBtn");
+        const inWishlist = wishlistBtn.dataset.inWishlist === "true";
+
+        try {
+          const response = await fetch(
+            "/api/wishlist" + (inWishlist ? "/" + product.id : ""),
+            {
+              method: inWishlist ? "DELETE" : "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: inWishlist
+                ? null
+                : JSON.stringify({
+                    product_id: product.id,
+                  }),
+            },
+          );
+
+          if (!response.ok) {
+            alert("Please login first");
+            window.location.href = "account.html";
+            return;
+          }
+
+          await syncWishlistButton(product.id);
+          alert(inWishlist ? "Removed from wishlist" : "Added to wishlist");
+        } catch (error) {
+          console.error(error);
+          alert("Error updating wishlist");
+        }
+      }
 
       async function rateProduct(value) {
         const product = window.currentProduct;
